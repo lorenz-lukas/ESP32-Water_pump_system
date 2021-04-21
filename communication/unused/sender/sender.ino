@@ -148,6 +148,7 @@ void loop()
     /* Envia a informação */
     LoRa.beginPacket();
     LoRa.write(state);
+    LoRa.write(opmode);
     //LoRa.write(informacao_a_ser_enviada);
     LoRa.endPacket();
     

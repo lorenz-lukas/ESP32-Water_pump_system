@@ -1,28 +1,9 @@
-/*
-  Heltec.LoRa Multiple Communication
-
-  This example provide a simple way to achieve one to multiple devices
-  communication.
-
-  Each devices send datas in broadcast method. Make sure each devices
-  working in the same BAND, then set the localAddress and destination
-  as you want.
-  
-  Sends a message every half second, and polls continually
-  for new incoming messages. Implements a one-byte addressing scheme,
-  with 0xFD as the broadcast address. You can set this address as you
-  want.
-
-  Note: while sending, Heltec.LoRa radio is not listening for incoming messages.
-  
-  by Aaron.Lee from HelTec AutoMation, ChengDu, China
-  成都惠利特自动化科技有限公司
-  www.heltec.cn
-  
-  this project also realess in GitHub:
-  https://github.com/Heltec-Aaron-Lee/WiFi_Kit_series
-*/
 #include "heltec.h"
+
+#include <WiFi.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include "interface.h"
 
 
 #define BAND    433E6  //you can set band here directly,e.g. 868E6,915E6
@@ -34,31 +15,93 @@
 #define LINE5     40
 #define LINE6     50
 
+//Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
 String outgoing;              // outgoing message
 
-byte localAddress = 0xFD;     // address of this device
-byte destination = 0xBB;      // destination to send to
+byte localAddress = 0xBB;     // address of this device
+byte destination = 0xFD;      // destination to send to
 
 byte msgCount = 0;            // count of outgoing messages
 long lastSendTime = 0;        // last send time
-int interval = 2000;          // interval between sends
-String message = "Hello,I'm coming!";   // send a message
+int interval = 1000;          // interval between sends
+String message = "What, already?!";   // send a message
 
-bool opmode = true;               //modo: 0->automatico / 1->manual
-int state = 0 ;               //estado: 0->vazio / 1->enchendo / 2->cheio / 3->erro
-bool toggle_pump;              //usuario->bomba: ativar/desativar bomba no modo manual
-bool pump_state=true;
+int opmode = 0;               //modo: 0->automatico / 1->manual
+int state = 0 ;               //estado: 0->vazio / 1->enchendo / 2->esvaziando / 3->cheio / 4->erro
+int toggle_pump;              //usuario->switch bomba: off->1 /on->0 bomba no modo manual
+int pump_state=0;
 
-int pump = 23;
-int capac = 13;
-int floater = 38;
+int man = 23;
+int tog = 13;
 
-    
+///////////////////////// HTML
+
+// Replace with your network credentials
+const char* ssid = "Lemos";
+const char* password = "mano7019";
+
+// Create AsyncWebServer object on port 80
+AsyncWebServer server(80);
+
+// Create an Event Source on /events
+AsyncEventSource events("/events");
+
+void initWiFi() {
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid, password);
+    Serial.print("Connecting to WiFi ..");
+    while (WiFi.status() != WL_CONNECTED) {
+        Serial.print('.');
+        delay(1000);
+    }
+    Serial.println(WiFi.localIP());
+}
+
+String processor(const String& var){
+  //Serial.println(var);
+  if(var == "state"){
+    return String(state);
+  }
+  else if(var == "pump_state"){
+    return String(pump_state);
+  }
+  else if(var == "toggle_pump"){
+    return String(toggle_pump);
+  }
+  return String();
+}
+
+void initWebSERVER(){
+  
+   initWiFi();
+  // Handle Web Server
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/html", index_html, processor);
+  });
+
+  // Handle Web Server Events
+  events.onConnect([](AsyncEventSourceClient *client){
+    if(client->lastId()){
+      Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
+    }
+    // send event with message "hello!", id current millis
+    // and set reconnect delay to 1 second
+    client->send("hello!", NULL, millis(), 10000);
+  });
+  server.addHandler(&events);
+  server.begin();
+}
+
+
+//////////////////////////////// LORA
 void setup()
 {
   //Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
-   //WIFI Kit series V1 not support Vext control
+   //WIFI Kit series V1 not support Vext control   
   Heltec.begin(true /*DisplayEnable Enable*/, true /*Heltec.LoRa Enable*/, true /*Serial Enable*/, true /*PABOOST Enable*/, BAND /*long BAND*/);
+
+  initWebSERVER();
   
   Heltec.display->init();
   Heltec.display->flipScreenVertically();  
@@ -70,35 +113,33 @@ void setup()
   Heltec.display->drawString(20, LINE3, "Aguarde...");
   Heltec.display->display();
   delay(1000);
-  
-  pinMode(pump, OUTPUT);
-  pinMode(capac, INPUT);
-  pinMode(floater, INPUT);
-
-  digitalWrite(pump,HIGH);
+  pinMode(man, INPUT);
+  pinMode(tog, INPUT);
  
 }
 
 void loop()
 {
-  while(state!=4){ 
-    if (millis() - lastSendTime > interval)
-    {
-      sendMessage(message);
-      Serial.println("Sending " + message);
-      lastSendTime = millis();            // timestamp the message
-      interval = random(2000) + 1000;    // 2-3 seconds
-    }
-  
-    // parse for a packet, and call onReceive with the result:
-    onReceive(LoRa.parsePacket());
-    state = control();
+  if (millis() - lastSendTime > interval)
+  {
+    
+    sendMessage(message);
+    Serial.println("Sending " + message);
+    lastSendTime = millis();            // timestamp the message
+    // PÁGINA HTML
+    events.send("ping",NULL,millis());
+    events.send(String(state).c_str(),"state", millis());
+    events.send(String(pump_state).c_str(),"pump_state", millis());
+    events.send(String(toggle_pump).c_str(),"toggle_pump",millis());
   }
-  Heltec.display->clear();
-  Heltec.display->drawString(20, LINE3, "Erro, veja sensores");
-  Heltec.display->display();
-  delay(1000);
-  while(1){}
+
+  // parse for a packet, and call onReceive with the result:
+  onReceive(LoRa.parsePacket());
+
+  //opmode=digitalRead(man);
+  //opmode=!opmode;
+  //toggle_pump=digitalRead(tog);
+  //toggle_pump=!toggle_pump;
 }
 
 void sendMessage(String outgoing)
@@ -108,9 +149,8 @@ void sendMessage(String outgoing)
   LoRa.write(localAddress);             // add sender address
   LoRa.write(msgCount);                 // add message ID
   LoRa.write(outgoing.length());        // add payload length
-  LoRa.write(state);                    // manda estado
-  LoRa.write(pump_state);               // manda estado da bomba
-  if (state==3) LoRa.write(toggle_pump); // se cheio forca toggle do usuario
+  LoRa.write(opmode);                   //modo de operacao
+  if (!opmode) LoRa.write(toggle_pump);   //se manual manda toggle  
   LoRa.print(outgoing);                 // add payload
   LoRa.endPacket();                     // finish packet and send it
   msgCount++;                           // increment message ID
@@ -125,9 +165,9 @@ void onReceive(int packetSize)
   byte sender = LoRa.read();            // sender address
   byte incomingMsgId = LoRa.read();     // incoming msg ID
   byte incomingLength = LoRa.read();    // incoming msg length
-  opmode = LoRa.read();                 // modo de operacao
-  if (!opmode) toggle_pump = LoRa.read(); // se manual vê toggle
-  
+  state = LoRa.read();                  // estado do sistema
+  pump_state= LoRa.read();              // estado da bomba
+  if (state==3) toggle_pump = LoRa.read(); // se cheio forca toggle
 
   String incoming = "";
 
@@ -159,7 +199,7 @@ void onReceive(int packetSize)
   Serial.println();
   Heltec.display->clear();
   Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-  Heltec.display->drawString(0, LINE1, "Controller-RSSI: " + String(LoRa.packetRssi()));
+  Heltec.display->drawString(0, LINE1, "Gateway-RSSI: " + String(LoRa.packetRssi()));
   if(opmode){
     Heltec.display->drawString(0, LINE2, "Modo: Automatico");
   }
@@ -185,43 +225,5 @@ void onReceive(int packetSize)
     Heltec.display->drawString(0, LINE4, "Bomba: Ativada");
   }
   Heltec.display->display();
-
-}
-
-int control()
-{
-  bool top,bottom;
   
-  bottom = digitalRead(capac);
-  bottom=!bottom;
-  top = digitalRead(floater);
-  top = !top;
-  if (top && !bottom){          //erro
-    digitalWrite(pump,HIGH);
-    pump_state=false;
-    return 4;
-  }
-  else if (top && bottom){     //cheio
-    digitalWrite(pump,HIGH);    //desliga bomba
-    pump_state=false;
-    toggle_pump = false;
-    return 3;   
-  }
-  else if (!opmode && !toggle_pump){//manual e switch bomba off
-    digitalWrite(pump,HIGH);         //desliga bomba
-    pump_state=false;
-    if (!bottom) return 0;       //vazio
-    else if (bottom) return 2 ; //esvaziando
-  }
-  else if(!opmode && toggle_pump){//manual e switch bomba on
-    digitalWrite(pump,LOW);      //liga bomba
-    pump_state=true;
-    return 1; //enchendo
-  }
-  else if(opmode && !bottom){ //automatico e vazio
-    digitalWrite(pump,LOW);  //liga bomba
-    pump_state=true;
-    return 1;                  //enchendo
-  }
-  else if(opmode && bottom) return 2; //automatico e esvaziando
 }
