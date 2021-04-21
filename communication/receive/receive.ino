@@ -1,6 +1,7 @@
 #include <LoRa.h>
 #include <SPI.h>
 #include <Wire.h>
+//#include <heltec.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
  
@@ -12,7 +13,7 @@
 #define SS_PIN_LORA        18
  
 #define HIGH_GAIN_LORA     20  /* dBm */
-#define BAND               915E6  /* 915MHz de frequencia */
+#define BAND               915E6  /* 433MHz de frequencia */
  
 /* Definicoes do OLED */
 #define OLED_SDA_PIN    4
@@ -31,7 +32,7 @@
 #define OLED_LINE6     50
  
 /* Definicoes gerais */
-#define DEBUG_SERIAL_BAUDRATE    115200
+#define DEBUG_SERIAL_BAUDRATE    9600
  
 /* Variaveis e objetos globais */
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -96,6 +97,11 @@ void setup()
     /* Configuracao da I²C para o display OLED */
     Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
  
+    Serial.begin(DEBUG_SERIAL_BAUDRATE);
+    while (!Serial);
+    delay(100);
+    Serial.println("\n Inicia com. Serial");
+    
     /* Display init */
     display_init();
  
@@ -104,12 +110,19 @@ void setup()
     display.setCursor(0, OLED_LINE1);
     display.print("Aguarde...");
     display.display();
+    delay(1000);
      
-    Serial.begin(DEBUG_SERIAL_BAUDRATE);
-    while (!Serial);
+    
  
     /* Tenta, até obter sucesso, comunicacao com o chip LoRa */
-    while(init_comunicacao_lora() == false);       
+    while(init_comunicacao_lora() == false);
+
+    display.clearDisplay();    
+    display.setCursor(0, OLED_LINE1);
+    display.print("Inic. LoRa concl.");
+    display.display();
+    delay(1000);
+    
 }
  
 /* Programa principal */
@@ -118,35 +131,62 @@ void loop()
     char byte_recebido;
     int packet_size = 0;
     int lora_rssi = 0;
-    long informacao_recebida = 0;
+    int informacao_recebida = 0;
     char * ptInformaraoRecebida = NULL;
+    int state,opmode;
+
    
     /* Verifica se chegou alguma informação do tamanho esperado */
     packet_size = LoRa.parsePacket();
      
-    if (packet_size == sizeof(informacao_recebida)) 
-    {
-        Serial.print("[LoRa Receiver] Há dados a serem lidos");
+    //if (packet_size == sizeof(informacao_recebida)) 
+    //{
+        Serial.println("[LoRa Receiver] Há dados a serem lidos");
          
-        /* Recebe os dados conforme protocolo */               
-        ptInformaraoRecebida = (char *)&informacao_recebida;  
+        /* Recebe os dados conforme protocolo */
+        
+        state = LoRa.read();
+        opmode = LoRa.read();               
+        //ptInformaraoRecebida = (char *)&informacao_recebida;  
         while (LoRa.available()) 
         {
-            byte_recebido = (char)LoRa.read();
-            *ptInformaraoRecebida = byte_recebido;
-            ptInformaraoRecebida++;
+            //informacao_recebida = LoRa.read();
+            //byte_recebido = (char)LoRa.read();
+            //*ptInformaraoRecebida = byte_recebido;
+            //ptInformaraoRecebida++;
         }
  
         /* Escreve RSSI de recepção e informação recebida */
         lora_rssi = LoRa.packetRssi();
         display.clearDisplay();   
         display.setCursor(0, OLED_LINE1);
-        display.print("RSSI: ");
+        display.print("Receiver-RSSI: ");
         display.println(lora_rssi);
         display.setCursor(0, OLED_LINE2);
-        display.print("Informacao: ");
-        display.setCursor(0, OLED_LINE3);
-        display.println(informacao_recebida);
-        display.display();      
-    }
+        display.print("Recebido: ");
+        //display.setCursor(0, OLED_LINE3);
+        //display.println(informacao_recebida);
+        if(opmode==0){
+          display.setCursor(0, OLED_LINE3);
+          display.println("Automatico");
+        }
+        else if(opmode==1){
+          display.setCursor(0, OLED_LINE3);
+          display.println("Manual");
+        }
+        if(state==0){
+          display.setCursor(0, OLED_LINE4);
+          display.println("Vazio");
+        }
+        else if(state==1){
+          display.setCursor(0, OLED_LINE4);
+          display.println("Enchendo");
+        }
+        else if(state==2){
+          display.setCursor(0, OLED_LINE4);
+          display.println("Cheio");
+        }
+        display.display();
+              
+    //}
 }
