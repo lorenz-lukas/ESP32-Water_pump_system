@@ -28,9 +28,15 @@ int interval = 1000;          // interval between sends
 String message = "What, already?!";   // send a message
 
 int opmode = 0;               //modo: 0->automatico / 1->manual
+
 int state = 0 ;               //estado: 0->vazio / 1->enchendo / 2->esvaziando / 3->cheio / 4->erro
-int toggle_pump;              //usuario->switch bomba: off->1 /on->0 bomba no modo manual
-int pump_state=0;
+String state_msg = "";
+
+int toggle_pump = 0;              //usuario->switch bomba: off->1 /on->0 bomba no modo manual
+String toggle_pump_msg = "";
+
+int pump_state = 0;             //bomba desligada = 0, bomba ligada = 1
+String pump_state_msg = "";
 
 int man = 23;
 int tog = 13;
@@ -61,13 +67,14 @@ void initWiFi() {
 String processor(const String& var){
   //Serial.println(var);
   if(var == "state"){
-    return String(state);
+    return state_msg;
   }
   else if(var == "pump_state"){
-    return String(pump_state);
+    Serial.println(pump_state);
+    return pump_state_msg;
   }
   else if(var == "toggle_pump"){
-    return String(toggle_pump);
+    return toggle_pump_msg;
   }
   return String();
 }
@@ -122,20 +129,47 @@ void loop()
 {
   if (millis() - lastSendTime > interval)
   {
-    
     sendMessage(message);
     Serial.println("Sending " + message);
     lastSendTime = millis();            // timestamp the message
     // PÁGINA HTML
     events.send("ping",NULL,millis());
-    events.send(String(state).c_str(),"state", millis());
-    events.send(String(pump_state).c_str(),"pump_state", millis());
-    events.send(String(toggle_pump).c_str(),"toggle_pump",millis());
+    if(state == 0){
+      state_msg = "Vazio";    
+      events.send("Vazio", "state", millis());
+    }else if(state == 1){
+      state_msg = "Cheio";    
+      events.send("Cheio", "state", millis());
+    }else if(state == 2){
+      state_msg = "Enchendo";    
+      events.send("Enchendo", "state", millis());
+    }else if(state == 3){
+      state_msg = "Esvaziando";    
+      events.send("Esvaziando", "state", millis());
+    }else{
+      state_msg = "Erro";    
+      events.send("Erro", "state", millis());
+    }
+
+    if(pump_state == 0){
+      pump_state_msg = "Desligada";
+      events.send("Desligada", "pump_state", millis());
+    }else{
+      pump_state_msg = "Ligada";
+      events.send("Ligada", "pump_state", millis());
+    }
+
+    if(toggle_pump == 0){
+      toggle_pump_msg = "Automatico";    
+      events.send("Automático", "toggle_pump",millis());
+    }else{
+      toggle_pump_msg = "Manual";    
+      events.send("Manual", "toggle_pump",millis());
+    }
   }
 
   // parse for a packet, and call onReceive with the result:
   onReceive(LoRa.parsePacket());
-
   //opmode=digitalRead(man);
   //opmode=!opmode;
   //toggle_pump=digitalRead(tog);
@@ -166,7 +200,7 @@ void onReceive(int packetSize)
   byte incomingMsgId = LoRa.read();     // incoming msg ID
   byte incomingLength = LoRa.read();    // incoming msg length
   state = LoRa.read();                  // estado do sistema
-  pump_state= LoRa.read();              // estado da bomba
+  pump_state = LoRa.read();              // estado da bomba
   if (state==3) toggle_pump = LoRa.read(); // se cheio forca toggle
 
   String incoming = "";

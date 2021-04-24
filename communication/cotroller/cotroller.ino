@@ -10,6 +10,10 @@
 #define LINE5     40
 #define LINE6     50
 
+#define pump 21
+#define capac 13
+#define floater 37
+
 String outgoing;              // outgoing message
 
 byte localAddress = 0xFD;     // address of this device
@@ -17,7 +21,7 @@ byte destination = 0xBB;      // destination to send to
 
 byte msgCount = 0;            // count of outgoing messages
 long lastSendTime = 0;        // last send time
-int interval = 700;          // interval between sends
+int interval = 1000;          // interval between sends
 String message = "Hello,I'm coming!";   // send a message
 
 int opmode = 0;               //modo: 0->automatico / 1->manual
@@ -25,9 +29,7 @@ int state = 0 ;               //estado: 0->vazio / 1->enchendo / 2->esvaziando /
 int toggle_pump;              //usuario->switch bomba: off->1 /on->0 bomba no modo manual
 int pump_state=0;
 
-int pump = 36;
-int capac = 13;
-int floater = 37;
+
 
     
 void setup()
@@ -47,10 +49,16 @@ void setup()
   Heltec.display->display();
   delay(1000);
   
-  pinMode(pump, OUTPUT);
+  //pinMode(pump, OUTPUT);
   pinMode(capac, INPUT);
   pinMode(floater, INPUT);
-
+  pinMode(pump, OUTPUT);
+  digitalWrite(pump,HIGH);
+  digitalWrite( LED ,HIGH );
+  delay(10000);
+  digitalWrite(pump,LOW);
+  digitalWrite( LED ,LOW );
+  delay(10000);
 }
 
 int ini = 0;
@@ -59,15 +67,14 @@ void loop()
 {
 
   if (ini==0){
-    digitalWrite(pump,HIGH); 
+    digitalWrite( pump ,HIGH ); delay(1000);
     ini=1;
   }
   if (millis() - lastSendTime > interval)
   {
     sendMessage(message);
-    Serial.println("Sending " + message);
+    Serial.println("Sending " + String(pump_state));
     lastSendTime = millis();            // timestamp the message
-    interval = random(2000) + 1000;    // 2-3 seconds
   }
   // parse for a packet, and call onReceive with the result:
   onReceive(LoRa.parsePacket());
@@ -199,51 +206,53 @@ int control()
   top = digitalRead(floater);
   ////////////////////////// ERRO
   if (top==1 && bottom==0){          //erro
-    Serial.println("ERRO, top"+ String(top)+"bot"+ String(bottom));
-    digitalWrite(pump,HIGH); // desliga bomba
+    digitalWrite( pump ,HIGH ); delay(1000);// desliga bomba
     pump_state=0;
+    Serial.println("ERRO, top"+ String(top)+"bot"+ String(bottom)+"pump"+ String(pump_state));
     return 4;
   }
   /////////// CHEIO MANUAL E AUTOMÁTICO
   else if (top==1 && bottom==1){     //cheio
-    digitalWrite(pump,HIGH);    //desliga bomba
+    digitalWrite( pump ,HIGH ); delay(1000);   //desliga bomba
     pump_state=0;
     toggle_pump = 0;
-    Serial.println("cheio, top"+ String(top)+"bot"+ String(bottom));
+    Serial.println("cheio, top"+ String(top)+"bot"+ String(bottom)+"pump"+ String(pump_state));
     return 3;   
   }
   ////////// AUTOMÁTICO
   else if(opmode==0 && bottom==0){ //automatico e vazio
-    digitalWrite(pump,LOW);  //liga bomba
-    Serial.println("vazio-auto, top"+ String(top)+"bot"+ String(bottom));
+    digitalWrite( pump ,LOW ); delay(1000);  //liga bomba
     pump_state=1;
+    Serial.println("vazio-auto, top"+ String(top)+"bot"+ String(bottom)+"pump"+ String(pump_state));
     return 0;                  //vazio
   }
   else if(opmode==0 && bottom==1 && pump_state==0){
-    Serial.println("esvaziando-auto, top"+ String(top)+"bot"+ String(bottom));
+    pump_state=0;
+    Serial.println("esvaziando-auto, top"+ String(top)+"bot"+ String(bottom)+"pump"+ String(pump_state));
     return 2; //automatico e esvaziando
   }
   else if(opmode==0 && bottom==1 && pump_state==1){
-    Serial.println("enchendo-auto, top"+ String(top)+"bot"+ String(bottom));
-    return 1; //automatico e esvaziando
+    pump_state=1;
+    Serial.println("enchendo-auto, top"+ String(top)+"bot"+ String(bottom)+"pump"+ String(pump_state));
+    return 1; //automatico e enchendo
   }
   //////////////////// MANUAL
   else if (opmode==1 && toggle_pump==0){//manual e switch bomba off
-    digitalWrite(pump,HIGH);         //desliga bomba
+    digitalWrite( pump ,HIGH ); delay(1000);        //desliga bomba
     pump_state=0;
     if (bottom==0){
-      Serial.println("vazio-manual-off, top"+ String(top)+"bot"+ String(bottom));
+      Serial.println("vazio-manual-off, top"+ String(top)+"bot"+ String(bottom)+"pump"+ String(pump_state));
       return 0;       //vazio
     }
     else if (bottom==1){
-      Serial.println("esvaziando-manual-off, top"+ String(top)+"bot"+ String(bottom));
+      Serial.println("esvaziando-manual-off, top"+ String(top)+"bot"+ String(bottom)+"pump"+ String(pump_state));
       return 2 ; //esvaziando
     }
   }
   else if(opmode==1 && toggle_pump==0){//manual e switch bomba on
-    digitalWrite(pump,LOW);      //liga bomba
+    digitalWrite( pump ,LOW ); delay(1000);      //liga bomba
     pump_state=1;
-    Serial.println("enchendo-manual, top"+ String(top)+"bot"+ String(bottom));
+    Serial.println("enchendo-manual, top"+ String(top)+"bot"+ String(bottom)+"pump"+ String(pump_state));
     return 1; //enchendo
   }
 }

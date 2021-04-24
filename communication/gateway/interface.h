@@ -28,7 +28,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         
         <p>
           <span class="reading">
-            <span id="state">%state:%
+            <span id="state">%state:_msg%
             </span> 
           </span>
         </p> 
@@ -38,17 +38,17 @@ const char index_html[] PROGMEM = R"rawliteral(
         
         <p>
           <span class="reading">
-            <span id="state_pump">%state_pump%
+            <span id="pump_state">%pump_state_msg%
             </span> 
           </span>
         </p>
       </div>
       <div class="card">
-        <p><i class="fas fa-angle-double-down" style="color:#e1e437;"></i> ATIVA BOMBA</p>
+        <p><i class="fas fa-angle-double-down" style="color:#e1e437;"></i> BOMBA Manual/Automatico</p>
         
         <p>
           <span class="reading">
-            <span id="toggle_pump">%toggle_pump%
+            <span id="toggle_pump">%toggle_pump_msg%
             </span>
           </span>
         </p>
@@ -77,9 +77,9 @@ if (!!window.EventSource) {
   document.getElementById("state").innerHTML = e.data;
  }, false);
  
- source.addEventListener('state_pump', function(e) {
-  console.log("state_pump", e.data);
-  document.getElementById("state_pump").innerHTML = e.data;
+ source.addEventListener('pump_state', function(e) {
+  console.log("pump_state", e.data);
+  document.getElementById("pump_state").innerHTML = e.data;
  }, false);
  
  source.addEventListener('toggle_pump', function(e) {
