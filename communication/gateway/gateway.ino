@@ -41,6 +41,9 @@ String pump_state_msg = "";
 int man = 23;
 int tog = 13;
 
+
+const int buttonPin = 18;    // Pushbutton
+
 ///////////////////////// HTML
 
 // Replace with your network credentials
@@ -64,6 +67,16 @@ void initWiFi() {
     Serial.println(WiFi.localIP());
 }
 
+
+String outputState(int gpio){
+  if(digitalRead(gpio)){
+    return "checked";
+  }
+  else {
+    return "";
+  }
+}
+
 String processor(const String& var){
   //Serial.println(var);
   if(var == "state"){
@@ -75,6 +88,11 @@ String processor(const String& var){
   }
   else if(var == "toggle_pump"){
     return toggle_pump_msg;
+  }else if(var == "BUTTONPLACEHOLDER"){
+    String buttons;
+    String outputStateValue = outputState(32);
+    buttons+="<div class=\"card card-switch\"><h4><i class=\"fas fa-lightbulb\"></i> OUTPUT</h4><label class=\"switch\"><input type=\"checkbox\" onchange=\"controlOutput(this)\" id=\"output\" " + outputStateValue + "><span class=\"slider\"></span></label></div>";
+    return buttons;
   }
   return String();
 }
@@ -85,6 +103,15 @@ void initWebSERVER(){
   // Handle Web Server
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/html", index_html, processor);
+  });
+  
+  // Send a GET request to control on board status LED <ESP_IP>/toggle
+  server.on("/toggle", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    if(!request->authenticate(http_username, http_password))
+      return request->requestAuthentication();
+    ledState = !ledState;
+    digitalWrite(ledPin, ledState);
+    request->send(200, "text/plain", "OK");
   });
 
   // Handle Web Server Events
@@ -120,6 +147,10 @@ void setup()
   Heltec.display->drawString(20, LINE3, "Aguarde...");
   Heltec.display->display();
   delay(1000);
+  
+  // initialize the pushbutton pin as an input
+  pinMode(buttonPin, INPUT);
+
   pinMode(man, INPUT);
   pinMode(tog, INPUT);
  
@@ -171,7 +202,19 @@ void loop()
 
   // parse for a packet, and call onReceive with the result:
   onReceive(LoRa.parsePacket());
-  updisplay();
+  // updisplay();
+
+  int reading = digitalRead(buttonPin);
+  if (reading != buttonState) {
+    buttonState = reading;
+    // only toggle the LED if the new button state is HIGH
+    if (buttonState == HIGH) {
+      ledState = !ledState;
+      digitalWrite(ledPin, ledState);
+      events.send(String(digitalRead(ledPin)).c_str(),"led_state",millis());
+    }
+  }
+  lastButtonState = reading;
   //opmode=digitalRead(man);
   //opmode=!opmode;
   //toggle_pump=digitalRead(tog);
