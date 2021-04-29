@@ -54,38 +54,52 @@ const char index_html[] PROGMEM = R"rawliteral(
         </p>
       </div>
     </div>
+    %BUTTONPLACEHOLDER%
   </div>
 <script>
+function toggleLed(element) {
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", "/toggle", true);
+  xhr.send();
+}
+
 if (!!window.EventSource) {
- var source = new EventSource('/events');
- 
- source.addEventListener('open', function(e) {
-  console.log("Events Connected");
- }, false);
- source.addEventListener('error', function(e) {
-  if (e.target.readyState != EventSource.OPEN) {
-    console.log("Events Disconnected");
-  }
- }, false);
- 
- source.addEventListener('message', function(e) {
-  console.log("message", e.data);
- }, false);
- 
- source.addEventListener('state', function(e) {
-  console.log("state", e.data);
-  document.getElementById("state").innerHTML = e.data;
- }, false);
- 
- source.addEventListener('pump_state', function(e) {
-  console.log("pump_state", e.data);
-  document.getElementById("pump_state").innerHTML = e.data;
- }, false);
- 
- source.addEventListener('toggle_pump', function(e) {
-  console.log("toggle_pump", e.data);
-  document.getElementById("toggle_pump").innerHTML = e.data;
- }, false);
+    var source = new EventSource('/events');
+
+    source.addEventListener('open', function(e) {
+      console.log("Events Connected");
+    }, false);
+    source.addEventListener('error', function(e) {
+      if (e.target.readyState != EventSource.OPEN) {
+        console.log("Events Disconnected");
+      }
+    }, false);
+
+    source.addEventListener('message', function(e) {
+      console.log("message", e.data);
+    }, false);
+
+    source.addEventListener('state', function(e) {
+      console.log("state", e.data);
+      document.getElementById("state").innerHTML = e.data;
+    }, false);
+
+    source.addEventListener('pump_state', function(e) {
+      console.log("pump_state", e.data);
+      document.getElementById("pump_state").innerHTML = e.data;
+    }, false);
+
+    source.addEventListener('toggle_pump', function(e) {
+      console.log("toggle_pump", e.data);
+      document.getElementById("toggle_pump").innerHTML = e.data;
+    }, false);
+    source.addEventListener('led_state', function(e) {
+      console.log("led_state", e.data);
+      var inputChecked;
+      if( e.data == 1){ inputChecked = true; }
+      else { inputChecked = false; }
+      document.getElementById("led").checked = inputChecked;
+    }, false);
 }
 </script>
 </body>

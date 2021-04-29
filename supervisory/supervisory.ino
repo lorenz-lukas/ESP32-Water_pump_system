@@ -45,9 +45,18 @@ String processor(const String& var){
   }
   else if(var == "PRESSURE"){
     return String(pressure);
+  }else if(var == "BUTTONPLACEHOLDER"){ // BOTÂO MANUAL
+    String buttons;
+    String outputStateValue = outputState(32);
+    buttons+="<div class=\"card card-switch\"><h4><i class=\"fas fa-lightbulb\"></i> OUTPUT</h4><label class=\"switch\"><input type=\"checkbox\" onchange=\"controlOutput(this)\" id=\"output\" " + outputStateValue + "><span class=\"slider\"></span></label></div>";
+    outputStateValue = outputState(19);
+    buttons+="<div class=\"card card-switch\"><h4><i class=\"fas fa-lightbulb\"></i> STATUS LED</h4><label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleLed(this)\" id=\"led\" " + outputStateValue + "><span class=\"slider\"></span></label></div>";
+    return buttons;
   }
   return String();
 }
+
+
 
 void setup() {
   Serial.begin(115200);
@@ -57,7 +66,14 @@ void setup() {
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/html", index_html, processor);
   });
-
+  // Send a GET request to control on board status LED <ESP_IP>/toggle
+  server.on("/toggle", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    if(!request->authenticate(http_username, http_password))
+      return request->requestAuthentication();
+    ledState = !ledState;
+    digitalWrite(ledPin, ledState);
+    request->send(200, "text/plain", "OK");
+  });
   // Handle Web Server Events
   events.onConnect([](AsyncEventSourceClient *client){
     if(client->lastId()){
