@@ -54,11 +54,11 @@ void setup()
   pinMode(floater, INPUT);
   pinMode(pump, OUTPUT);
   digitalWrite(pump,HIGH);
-  digitalWrite( LED ,HIGH );
-  delay(10000);
-  digitalWrite(pump,LOW);
-  digitalWrite( LED ,LOW );
-  delay(10000);
+  //digitalWrite( LED ,HIGH );
+  //delay(10000);
+  //digitalWrite(pump,LOW);
+  //digitalWrite( LED ,LOW );
+  //delay(10000);
 }
 
 int ini = 0;
@@ -79,7 +79,8 @@ void loop()
   // parse for a packet, and call onReceive with the result:
   onReceive(LoRa.parsePacket());
   state = control();
-
+  updisplay();
+  
   if(state == 4){
     error();    
   }
@@ -167,34 +168,34 @@ void onReceive(int packetSize)
   Serial.println("Snr: " + String(LoRa.packetSnr()));
   Serial.println();
   
-  Heltec.display->clear();
-  Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-  Heltec.display->drawString(0, LINE1, "Controller-RSSI: " + String(LoRa.packetRssi()));
-  if(opmode==0){
-    Heltec.display->drawString(0, LINE2, "Modo: Automatico");
-  }
-  else if(opmode==1){
-    Heltec.display->drawString(0, LINE2, "Modo: Manual");
-  }
-  if(state==0){
-    Heltec.display->drawString(0, LINE3, "Estado: Vazio");
-  }
-  else if(state==1){
-    Heltec.display->drawString(0, LINE3, "Estado: Enchendo");
-  }
-  else if(state==2){
-    Heltec.display->drawString(0, LINE3, "Estado: Esvaziando");
-  }
-  else if(state==3){
-    Heltec.display->drawString(0, LINE3, "Estado: Cheio");
-  }
-  else if(pump_state==0){
-    Heltec.display->drawString(0, LINE4, "Bomba: Desativada");
-  }
-  else if(pump_state==1){
-    Heltec.display->drawString(0, LINE4, "Bomba: Ativada");
-  }
-  Heltec.display->display();
+//  Heltec.display->clear();
+//  Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+//  Heltec.display->drawString(0, LINE1, "Controller-RSSI: " + String(LoRa.packetRssi()));
+//  if(opmode==0){
+//    Heltec.display->drawString(0, LINE2, "Modo: Automatico");
+//  }
+//  else if(opmode==1){
+//    Heltec.display->drawString(0, LINE2, "Modo: Manual");
+//  }
+//  if(state==0){
+//    Heltec.display->drawString(0, LINE3, "Estado: Vazio");
+//  }
+//  else if(state==1){
+//    Heltec.display->drawString(0, LINE3, "Estado: Enchendo");
+//  }
+//  else if(state==2){
+//    Heltec.display->drawString(0, LINE3, "Estado: Esvaziando");
+//  }
+//  else if(state==3){
+//    Heltec.display->drawString(0, LINE3, "Estado: Cheio");
+//  }
+//  else if(pump_state==0){
+//    Heltec.display->drawString(0, LINE4, "Bomba: Desativada");
+//  }
+//  else if(pump_state==1){
+//    Heltec.display->drawString(0, LINE4, "Bomba: Ativada");
+//  }
+//  Heltec.display->display();
 
 }
 
@@ -255,4 +256,35 @@ int control()
     Serial.println("enchendo-manual, top"+ String(top)+"bot"+ String(bottom)+"pump"+ String(pump_state));
     return 1; //enchendo
   }
+}
+void updisplay()
+{
+  Heltec.display->clear();
+  Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+  Heltec.display->drawString(0, LINE1, "Controller-RSSI: " + String(LoRa.packetRssi()));
+  if(opmode==0){
+    Heltec.display->drawString(0, LINE2, "Modo: Automatico");
+  }
+  else if(opmode==1){
+    Heltec.display->drawString(0, LINE2, "Modo: Manual");
+  }
+  if(state==0){
+    Heltec.display->drawString(0, LINE3, "Estado: Vazio");
+  }
+  else if(state==1){
+    Heltec.display->drawString(0, LINE3, "Estado: Enchendo");
+  }
+  else if(state==2){
+    Heltec.display->drawString(0, LINE3, "Estado: Esvaziando");
+  }
+  else if(state==3){
+    Heltec.display->drawString(0, LINE3, "Estado: Cheio");
+  }
+  else if(pump_state==0){
+    Heltec.display->drawString(0, LINE4, "Bomba: Desativada");
+  }
+  else if(pump_state==1){
+    Heltec.display->drawString(0, LINE4, "Bomba: Ativada");
+  }
+  Heltec.display->display();
 }

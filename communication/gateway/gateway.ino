@@ -132,18 +132,19 @@ void loop()
     sendMessage(message);
     Serial.println("Sending " + message);
     lastSendTime = millis();            // timestamp the message
+    
     // PÁGINA HTML
     events.send("ping",NULL,millis());
     if(state == 0){
       state_msg = "Vazio";    
       events.send("Vazio", "state", millis());
-    }else if(state == 1){
+    }else if(state == 3){
       state_msg = "Cheio";    
       events.send("Cheio", "state", millis());
-    }else if(state == 2){
+    }else if(state == 1){
       state_msg = "Enchendo";    
       events.send("Enchendo", "state", millis());
-    }else if(state == 3){
+    }else if(state == 2){
       state_msg = "Esvaziando";    
       events.send("Esvaziando", "state", millis());
     }else{
@@ -170,6 +171,7 @@ void loop()
 
   // parse for a packet, and call onReceive with the result:
   onReceive(LoRa.parsePacket());
+  updisplay();
   //opmode=digitalRead(man);
   //opmode=!opmode;
   //toggle_pump=digitalRead(tog);
@@ -231,13 +233,45 @@ void onReceive(int packetSize)
   Serial.println("RSSI: " + String(LoRa.packetRssi()));
   Serial.println("Snr: " + String(LoRa.packetSnr()));
   Serial.println();
+//  Heltec.display->clear();
+//  Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+//  Heltec.display->drawString(0, LINE1, "Gateway-RSSI: " + String(LoRa.packetRssi()));
+//  if(opmode){
+//    Heltec.display->drawString(0, LINE2, "Modo: Automatico");
+//  }
+//  else if(!opmode){
+//    Heltec.display->drawString(0, LINE2, "Modo: Manual");
+//  }
+//  if(state==0){
+//    Heltec.display->drawString(0, LINE3, "Estado: Vazio");
+//  }
+//  else if(state==1){
+//    Heltec.display->drawString(0, LINE3, "Estado: Enchendo");
+//  }
+//  else if(state==2){
+//    Heltec.display->drawString(0, LINE3, "Estado: Esvaziando");
+//  }
+//  else if(state==3){
+//    Heltec.display->drawString(0, LINE3, "Estado: Cheio");
+//  }
+//  else if(pump_state){
+//    Heltec.display->drawString(0, LINE4, "Bomba: Desativada");
+//  }
+//  else if(!pump_state){
+//    Heltec.display->drawString(0, LINE4, "Bomba: Ativada");
+//  }
+//  Heltec.display->display();
+  
+}
+void updisplay()
+{
   Heltec.display->clear();
   Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-  Heltec.display->drawString(0, LINE1, "Gateway-RSSI: " + String(LoRa.packetRssi()));
-  if(opmode){
+  Heltec.display->drawString(0, LINE1, "Controller-RSSI: " + String(LoRa.packetRssi()));
+  if(opmode==0){
     Heltec.display->drawString(0, LINE2, "Modo: Automatico");
   }
-  else if(!opmode){
+  else if(opmode==1){
     Heltec.display->drawString(0, LINE2, "Modo: Manual");
   }
   if(state==0){
@@ -252,12 +286,11 @@ void onReceive(int packetSize)
   else if(state==3){
     Heltec.display->drawString(0, LINE3, "Estado: Cheio");
   }
-  else if(pump_state){
+  else if(pump_state==0){
     Heltec.display->drawString(0, LINE4, "Bomba: Desativada");
   }
-  else if(!pump_state){
+  else if(pump_state==1){
     Heltec.display->drawString(0, LINE4, "Bomba: Ativada");
   }
   Heltec.display->display();
-  
 }
