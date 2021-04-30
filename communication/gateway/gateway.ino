@@ -24,7 +24,7 @@ byte destination = 0xFD;      // destination to send to
 
 byte msgCount = 0;            // count of outgoing messages
 long lastSendTime = 0;        // last send time
-int interval = 1000;          // interval between sends
+int interval = 500;          // interval between sends
 String message = "What, already?!";   // send a message
 
 int opmode = 0;               //modo: 0->automatico / 1->manual
@@ -40,9 +40,6 @@ String pump_state_msg = "";
 
 int man = 23;
 int tog = 13;
-
-
-const int buttonPin = 18;    // Pushbutton
 
 ///////////////////////// HTML
 
@@ -91,7 +88,10 @@ String processor(const String& var){
   }else if(var == "BUTTONPLACEHOLDER"){
     String buttons;
     String outputStateValue = outputState(32);
-    buttons+="<div class=\"card card-switch\"><h4><i class=\"fas fa-lightbulb\"></i> OUTPUT</h4><label class=\"switch\"><input type=\"checkbox\" onchange=\"controlOutput(this)\" id=\"output\" " + outputStateValue + "><span class=\"slider\"></span></label></div>";
+    buttons+="<div class=\"card card-switch\"><h4><i class=\"fas fa-lightbulb\"></i> Modo De Operacao </h4><label class=\"switch\"><input type=\"checkbox\" onchange=\"controlOutput(this)\" id=\"output\" " + outputStateValue + "><span class=\"slider\"></span></label></div>";
+    outputStateValue = outputState(19);
+    buttons+="<div class=\"card card-switch\"><h4><i class=\"fas fa-lightbulb\"></i> Ligar Bomba Manual </h4><label class=\"switch\"><input type=\"checkbox\" onchange=\"toggleLed(this)\" id=\"led\" " + outputStateValue + "><span class=\"slider\"></span></label></div>";
+    
     return buttons;
   }
   return String();
@@ -107,10 +107,14 @@ void initWebSERVER(){
   
   // Send a GET request to control on board status LED <ESP_IP>/toggle
   server.on("/toggle", HTTP_GET, [] (AsyncWebServerRequest *request) {
-    if(!request->authenticate(http_username, http_password))
-      return request->requestAuthentication();
-    ledState = !ledState;
-    digitalWrite(ledPin, ledState);
+    if(toggle_pump == 0 && state < 3) toggle_pump = 1;
+    else toggle_pump = 0;
+    request->send(200, "text/plain", "OK");
+  });
+  // Send a GET request to control output socket <ESP_IP>/output?state=<inputMessage>
+  server.on("/output", HTTP_GET, [] (AsyncWebServerRequest *request) {
+    if(opmode == 0 && state < 3) opmode = 1;
+    else opmode = 0;
     request->send(200, "text/plain", "OK");
   });
 
@@ -147,12 +151,10 @@ void setup()
   Heltec.display->drawString(20, LINE3, "Aguarde...");
   Heltec.display->display();
   delay(1000);
-  
-  // initialize the pushbutton pin as an input
-  pinMode(buttonPin, INPUT);
 
   pinMode(man, INPUT);
   pinMode(tog, INPUT);
+  updisplay();
  
 }
 
@@ -191,34 +193,21 @@ void loop()
       events.send("Ligada", "pump_state", millis());
     }
 
-    if(toggle_pump == 0){
+    if(opmode == 0){
       toggle_pump_msg = "Automatico";    
       events.send("Automático", "toggle_pump",millis());
     }else{
       toggle_pump_msg = "Manual";    
       events.send("Manual", "toggle_pump",millis());
     }
+    if(toggle_pump == 1){
+      pump_state = 1;
+    }
   }
 
   // parse for a packet, and call onReceive with the result:
   onReceive(LoRa.parsePacket());
-  // updisplay();
-
-  int reading = digitalRead(buttonPin);
-  if (reading != buttonState) {
-    buttonState = reading;
-    // only toggle the LED if the new button state is HIGH
-    if (buttonState == HIGH) {
-      ledState = !ledState;
-      digitalWrite(ledPin, ledState);
-      events.send(String(digitalRead(ledPin)).c_str(),"led_state",millis());
-    }
-  }
-  lastButtonState = reading;
-  //opmode=digitalRead(man);
-  //opmode=!opmode;
-  //toggle_pump=digitalRead(tog);
-  //toggle_pump=!toggle_pump;
+  
 }
 
 void sendMessage(String outgoing)
@@ -276,6 +265,7 @@ void onReceive(int packetSize)
   Serial.println("RSSI: " + String(LoRa.packetRssi()));
   Serial.println("Snr: " + String(LoRa.packetSnr()));
   Serial.println();
+  updisplay();
 //  Heltec.display->clear();
 //  Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
 //  Heltec.display->drawString(0, LINE1, "Gateway-RSSI: " + String(LoRa.packetRssi()));

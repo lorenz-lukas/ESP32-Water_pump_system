@@ -21,7 +21,7 @@ byte destination = 0xBB;      // destination to send to
 
 byte msgCount = 0;            // count of outgoing messages
 long lastSendTime = 0;        // last send time
-int interval = 1000;          // interval between sends
+int interval = 500;          // interval between sends
 String message = "Hello,I'm coming!";   // send a message
 
 int opmode = 0;               //modo: 0->automatico / 1->manual
